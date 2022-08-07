@@ -12,7 +12,7 @@ public class EmployeeSearchById implements Question {
         return SerenityRest.lastResponse().body().as(Employee.class);
     }
 
-    public static Question<Employee> hasFieldEqualTo() {
+    public static Question<Employee > hasFieldEqualTo() {
         return new EmployeeSearchById();
     }
 

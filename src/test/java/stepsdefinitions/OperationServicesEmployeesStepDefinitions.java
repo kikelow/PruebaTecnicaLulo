@@ -1,6 +1,9 @@
 package stepsdefinitions;
 
+import co.test.lulobank.dto.creteEmployee.CreateEmployeeData;
+import co.test.lulobank.dto.creteEmployee.CreateEmployeeDto;
 import co.test.lulobank.dto.getEMployee.Employee;
+import co.test.lulobank.dto.getEMployee.EmployeeData;
 import co.test.lulobank.questions.*;
 import co.test.lulobank.tasks.CreateEmployee;
 import co.test.lulobank.tasks.DeleteEmployee;
@@ -11,6 +14,7 @@ import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.vavr.API;
 import net.serenitybdd.screenplay.Actor;
 import net.serenitybdd.screenplay.rest.abilities.CallAnApi;
 import net.thucydides.core.util.EnvironmentVariables;
@@ -43,7 +47,7 @@ public class OperationServicesEmployeesStepDefinitions {
 
     @Given("{string} requiere realizar operaciones sobre el servicio de empleados")
     public void harinsonRequiereObtenerTodosLosEmpleados(String actorName) {
-        actor = Actor.named("Harinson");
+        actor = Actor.named(actorName);
         actor.whoCan(
                 CallAnApi.at(environmentVariables.optionalProperty("restapi.baseurl").get())
         );
@@ -57,7 +61,7 @@ public class OperationServicesEmployeesStepDefinitions {
     @Then("el codigo de respuesta debera ser 200")
     public void elCodigoDeRespuestaDebera() {
         actor.should(
-                seeThat("El codigo de respuesta de la peticion es ",
+                seeThat("El codigo de respuesta de la peticion ",
                         StatusCode.was(), equalTo(HttpServletResponse.SC_OK))
         );
     }
@@ -65,8 +69,8 @@ public class OperationServicesEmployeesStepDefinitions {
 
     @And("se mostraran todos los empleados")
     public void elCuerpoPresentaraLaSiguienteEstructura() {
-        List<LinkedHashMap<String, Object>> as = EmployeesSearch.hasAllItems().answeredBy(actor).path("data");
-        for (LinkedHashMap<String,Object> employee: as) {
+        List<LinkedHashMap<String, Object>> employeeList = EmployeesSearch.hasAllItems().answeredBy(actor).path("data");
+        for (LinkedHashMap<String,Object> employee: employeeList) {
             employee.forEach((k,v) -> assertThat(v,Matchers.notNullValue()));
         }
     }
@@ -74,6 +78,7 @@ public class OperationServicesEmployeesStepDefinitions {
 
     @When("realizo la operacion de consulta del empleado por su id numero {int}")
     public void consulteElEmpleadoEspecifico(int employeeId) {
+        this.employeeId = String.valueOf(employeeId);
         actor.attemptsTo(
                 GetEmployeeById.obtainEmployeeById(employeeId)
         );
@@ -81,11 +86,11 @@ public class OperationServicesEmployeesStepDefinitions {
 
     @And("^su informacion deberia corresponder con la siguiente, nombre : (.*), salario : (.*), edad : (.*), perfil de imagen : (.*)$")
     public void suInformacionDeberiaCorresponderConLaSiguienteNombreNombreSalarioSalarioEdadEddadPerfilDeImagenPerfil_imagen(String name, int salary, int age, String imageProfile) {
-        assertThat("El nombre del empleado es igual a ", EmployeeSearchById.hasFieldEqualTo().answeredBy(actor).getData().getEmployeeName(), Matchers.equalTo(name));
-        assertThat("El salario del empleado es igual a ", EmployeeSearchById.hasFieldEqualTo().answeredBy(actor).getData().getEmployeeSalary(), Matchers.equalTo(salary));
-        assertThat("La edad del empleado es igual a ", EmployeeSearchById.hasFieldEqualTo().answeredBy(actor).getData().getEmployeeAge(), Matchers.equalTo(age));
-        assertThat("La imagen de perfil del empleado es igual a ", EmployeeSearchById.hasFieldEqualTo().answeredBy(actor).getData().getProfileImage(), Matchers.equalTo(imageProfile));
-    }
+        EmployeeData employee = EmployeeData.builder().id(Integer.parseInt(employeeId)).employeeName(name).employeeSalary(salary).employeeAge(age).profileImage(imageProfile).build();
+        actor.should(
+                seeThat("que los obtejos son iguales",x -> new EmployeeSearchById().answeredBy(actor).getData() , Matchers.equalTo(employee))
+        );
+ }
 
 
     @When("^realizo la operacion de creacion de empleado con los datos, nombre : (.*), salario : (.*), y edad : (.*)$")
@@ -102,9 +107,9 @@ public class OperationServicesEmployeesStepDefinitions {
     @And("se mostrara la confirmacion del registro del empleado con los datos registrados, el status {string} y mensaje {string}")
     public void seMostraraLaConfirmacionDelRegistroDelEmpleado(String status, String message) {
         assertThat("El estado de la operacion es ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getStatus(), Matchers.equalTo(status));
-        assertThat("El nombre del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getEmployeeName(), Matchers.equalTo(name));
-        assertThat("El salario del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getEmployeeSalary(), Matchers.equalTo(salary));
-        assertThat("La edad del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getEmployeeAge(), Matchers.equalTo(age));
+        assertThat("El nombre del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getName(), Matchers.equalTo(name));
+        assertThat("El salario del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getSalary(), Matchers.equalTo(salary));
+        assertThat("La edad del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getAge(), Matchers.equalTo(age));
         assertThat("La edad del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getId(), Matchers.notNullValue());
         assertThat("El mensaje de la operacion es ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getMessage(), Matchers.equalTo(message));
     }

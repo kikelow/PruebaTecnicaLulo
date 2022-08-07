@@ -32,7 +32,10 @@ public class CreateEmployee implements Task {
         actor.attemptsTo(
                 Post.to(EmployeesOperationRoutes.CREATE_EMPLOYEE)
                         .with(request -> request.contentType(ContentType.JSON)
-                                .body(String.format(CreateEmployeeRequest.CREATE_EMPLOYEE_REQUEST, name, salary, age)))
+                                .body(String.format(CreateEmployeeRequest.CREATE_EMPLOYEE_REQUEST, name, salary, age))
+                                .log().all()
+                        )
+
         );
     }
 }

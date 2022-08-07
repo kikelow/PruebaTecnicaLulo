@@ -1,22 +1,29 @@
 package stepsdefinitions;
 
-import co.test.lulobank.dto.Employee;
-import co.test.lulobank.questions.EmployeeSearchById;
-import co.test.lulobank.questions.StatusCode;
+import co.test.lulobank.dto.getEMployee.Employee;
+import co.test.lulobank.questions.*;
+import co.test.lulobank.tasks.CreateEmployee;
+import co.test.lulobank.tasks.DeleteEmployee;
 import co.test.lulobank.tasks.GetEmployeeById;
 import co.test.lulobank.tasks.GetEmployees;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import net.serenitybdd.screenplay.Actor;
-import net.serenitybdd.screenplay.ensure.Ensure;
 import net.serenitybdd.screenplay.rest.abilities.CallAnApi;
 import net.thucydides.core.util.EnvironmentVariables;
 import org.hamcrest.Matchers;
 
 
 import javax.servlet.http.HttpServletResponse;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static net.serenitybdd.screenplay.GivenWhenThen.seeThat;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -25,9 +32,14 @@ import static org.hamcrest.Matchers.equalTo;
 
 public class OperationServicesEmployeesStepDefinitions {
 
-    Actor actor;
-    private EnvironmentVariables environmentVariables;
+    private String name;
+    private String salary;
+    private String age;
+    private String employeeId;
 
+    Actor actor;
+
+    private EnvironmentVariables environmentVariables;
 
     @Given("{string} requiere realizar operaciones sobre el servicio de empleados")
     public void harinsonRequiereObtenerTodosLosEmpleados(String actorName) {
@@ -37,7 +49,7 @@ public class OperationServicesEmployeesStepDefinitions {
         );
     }
 
-    @When("consulte todos los empleados")
+    @When("realizo la operacionde consulte todos los empleados")
     public void consulteTodosLosEmpleados() {
         actor.attemptsTo(GetEmployees.obtainEmployees());
     }
@@ -51,12 +63,16 @@ public class OperationServicesEmployeesStepDefinitions {
     }
 
 
-    @And("el cuerpo presentara la siguiente estructura {string}")
+    @And("se mostraran todos los empleados")
     public void elCuerpoPresentaraLaSiguienteEstructura() {
+        List<LinkedHashMap<String, Object>> as = EmployeesSearch.hasAllItems().answeredBy(actor).path("data");
+        for (LinkedHashMap<String,Object> employee: as) {
+            employee.forEach((k,v) -> assertThat(v,Matchers.notNullValue()));
+        }
     }
 
 
-    @When("consulte el empleado especifico por su id numero {int}")
+    @When("realizo la operacion de consulta del empleado por su id numero {int}")
     public void consulteElEmpleadoEspecifico(int employeeId) {
         actor.attemptsTo(
                 GetEmployeeById.obtainEmployeeById(employeeId)
@@ -71,28 +87,43 @@ public class OperationServicesEmployeesStepDefinitions {
         assertThat("La imagen de perfil del empleado es igual a ", EmployeeSearchById.hasFieldEqualTo().answeredBy(actor).getData().getProfileImage(), Matchers.equalTo(imageProfile));
     }
 
-//    @And("su informacion deberia corresponder con la siguiente, nombre : {string}, salario : {string}, edad : {string}, perfil de imagen : {string}")
-//    public void suInformacionDeberiaCorresponderConLaSiguienteNombreNombreSalarioSalarioEdadEdadPerfilDeImagenPerfil_imagen() {
-//    }
 
-//    @Given("Harinson requiere crear un empleado")
-//    public void harinsonRequiereCrearUnEmpleado() {
-//    }
-//
-//    @When("cree el empleado con los datos, nombre : <nombre>, salario : <salario>, y edad : <edad>")
-//    public void creeElEmpleadoConLosDatosNombreNombreSalarioSalarioYEdadEdad() {
-//    }
-//
-//    @And("se mostrara la confirmacion del registro del empleado")
-//    public void seMostraraLaConfirmacionDelRegistroDelEmpleado() {
-//    }
-//
-//    @Given("que Harinson requiere eliminar un empleado")
-//    public void queHarinsonRequiereEliminarUnEmpleado() {
-//    }
-//
-//    @When("elimine el empleado con id <id>")
-//    public void elimineElEmpleadoConIdId() {
-//    }
+    @When("^realizo la operacion de creacion de empleado con los datos, nombre : (.*), salario : (.*), y edad : (.*)$")
+    public void creeElEmpleadoConLosDatosNombreNombreSalarioSalarioYEdadEdad(String name, String salary, String age) {
+        this.name = name;
+        this.salary = salary;
+        this.age = age;
 
+        actor.attemptsTo(
+                CreateEmployee.createEmployeeWith(name, salary, age)
+        );
+    }
+
+    @And("se mostrara la confirmacion del registro del empleado con los datos registrados, el status {string} y mensaje {string}")
+    public void seMostraraLaConfirmacionDelRegistroDelEmpleado(String status, String message) {
+        assertThat("El estado de la operacion es ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getStatus(), Matchers.equalTo(status));
+        assertThat("El nombre del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getEmployeeName(), Matchers.equalTo(name));
+        assertThat("El salario del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getEmployeeSalary(), Matchers.equalTo(salary));
+        assertThat("La edad del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getEmployeeAge(), Matchers.equalTo(age));
+        assertThat("La edad del empleado es igual a ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getData().getId(), Matchers.notNullValue());
+        assertThat("El mensaje de la operacion es ", EmployeeCreated.hasBeenregistered().answeredBy(actor).getMessage(), Matchers.equalTo(message));
+    }
+
+
+    @When("realizo la operacion para eliminar un empleado con id {int}")
+    public void elimineElEmpleadoConIdId(int employeeId) {
+        this.employeeId = String.valueOf(employeeId);
+        actor.attemptsTo(
+                DeleteEmployee.withId(employeeId)
+        );
+    }
+
+    @And("se mostrara la confirmacion de eliminacion del empleado, con el estado {string} y el mensaje {string}")
+    public void seMostraraLaConfirmacionDeEliminacionDelEmpleadoConElEstadoSuccessYElMensajeSuccessfullyRecordHasBeenDeleted(String status, String message) {
+
+        assertThat("Estado de eliminacion del empleado ", EmployeeDelete.isDeleted().answeredBy(actor).getStatus(), Matchers.equalTo(status));
+        assertThat("Estado de eliminacion del empleado ", EmployeeDelete.isDeleted().answeredBy(actor).getData(), Matchers.equalTo(employeeId));
+        assertThat("Mensaje de eliminacion del empleado ", EmployeeDelete.isDeleted().answeredBy(actor).getMessage(), Matchers.equalTo(message));
+
+    }
 }

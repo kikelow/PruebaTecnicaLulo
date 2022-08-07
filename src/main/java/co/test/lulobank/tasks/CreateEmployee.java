@@ -17,15 +17,22 @@ public class CreateEmployee implements Task {
     private String salary;
     private String age;
 
+    public CreateEmployee(String name, String salary, String age) {
+        this.name = name;
+        this.salary = salary;
+        this.age = age;
+    }
+
     public static CreateEmployee createEmployeeWith(String name, String salary, String age) {
         return instrumented(CreateEmployee.class, name, salary, age);
     }
 
-
     @Override
-    public <T extends Actor> void performAs(T t) {
-        Post.to(EmployeesOperationRoutes.CREATE_EMPLOYEE)
-                .with(request -> request.contentType(ContentType.JSON)
-                        .body(String.format(CreateEmployeeRequest.CREATE_EMPLOYEE_REQUEST, name, salary, age)));
+    public <T extends Actor> void performAs(T actor) {
+        actor.attemptsTo(
+                Post.to(EmployeesOperationRoutes.CREATE_EMPLOYEE)
+                        .with(request -> request.contentType(ContentType.JSON)
+                                .body(String.format(CreateEmployeeRequest.CREATE_EMPLOYEE_REQUEST, name, salary, age)))
+        );
     }
 }
